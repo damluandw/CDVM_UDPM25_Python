@@ -1,0 +1,5 @@
+fastapi             # Framework chính để xây dựng RESTful API (hỗ trợ GET, POST, PUT, DELETE)
+uvicorn             # Máy chủ web tốc độ cao (ASGI Server) dùng để chạy ứng dụng FastAPI
+pyodbc              # Driver (Trình điều khiển) giúp Python kết nối được với SQL Server
+pydantic[email]     # Thư viện chuẩn hóa dữ liệu, xác thực form và tự động kiểm tra định dạng Email
+python-dotenv       # Dùng để đọc chuỗi kết nối và thông tin bảo mật từ file .env

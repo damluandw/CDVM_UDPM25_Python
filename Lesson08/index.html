@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Học Sinh (CRUD API)</title>
+    <style>
+        /* CSS giữ nguyên như phiên bản trước */
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f9; color: #333; }
+        h2 { text-align: center; }
+        .container { display: flex; gap: 20px; max-width: 1200px; margin: 0 auto; }
+        .form-section, .table-section { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .form-section { flex: 1; min-width: 300px; }
+        .table-section { flex: 2; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .form-group input { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { padding: 10px 15px; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-primary { background: #007bff; } .btn-primary:hover { background: #0056b3; }
+        .btn-secondary { background: #6c757d; } .btn-secondary:hover { background: #5a6268; }
+        .btn-edit { background: #ffc107; color: #212529; padding: 5px 10px; font-size: 13px; } .btn-edit:hover { background: #e0a800; }
+        .btn-delete { background: #dc3545; padding: 5px 10px; font-size: 13px; margin-left: 5px;} .btn-delete:hover { background: #c82333; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background-color: #f8f9fa; }
+    </style>
+</head>
+<body>
+
+    <h2>Hệ thống Quản lý Học sinh (Tích hợp API)</h2>
+    
+    <div class="container">
+        <div class="form-section">
+            <h3 id="form-title">Thêm Học Sinh</h3>
+            <input type="hidden" id="studentId">
+            
+            <div class="form-group">
+                <label for="name">Tên (Name):</label>
+                <input type="text" id="name" placeholder="Nhập tên học sinh" required>
+            </div>
+            <div class="form-group">
+                <label for="email">Email:</label>
+                <input type="email" id="email" placeholder="Nhập địa chỉ email" required>
+            </div>
+            <div class="form-group">
+                <label for="gpa">Điểm trung bình (GPA):</label>
+                <input type="number" id="gpa" step="0.1" min="0" max="4" placeholder="Nhập điểm GPA" required>
+            </div>
+            <button onclick="saveStudent()" id="save-btn" class="btn-primary">Lưu</button>
+            <button onclick="resetForm()" class="btn-secondary">Hủy</button>
+        </div>
+
+        <div class="table-section">
+            <h3>Danh sách Học Sinh</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Tên</th>
+                        <th>Email</th>
+                        <th>GPA</th>
+                        <th>Hành động</th>
+                    </tr>
+                </thead>
+                <tbody id="student-list">
+                    <tr><td colspan="5" style="text-align: center;">Đang tải dữ liệu...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // THAY ĐƯỜNG LINK NÀY BẰNG API THỰC TẾ CỦA BẠN
+        const API_URL = 'http://127.0.0.1:8000/students'; 
+        
+        let students = []; // Lưu trữ dữ liệu tạm để dễ đổ lên Form lúc sửa
+
+        // 1. READ: Lấy dữ liệu từ API bằng phương thức GET
+        async function fetchStudents() {
+            try {
+                const response = await fetch(API_URL);
+                if (!response.ok) throw new Error('Không thể tải dữ liệu');
+                students = await response.json();
+                renderTable();
+            } catch (error) {
+                console.error(error);
+                document.getElementById('student-list').innerHTML = `<tr><td colspan="5" style="color: red; text-align: center;">Lỗi tải dữ liệu API</td></tr>`;
+            }
+        }
+
+        // Render dữ liệu ra bảng
+        function renderTable() {
+            const tbody = document.getElementById('student-list');
+            tbody.innerHTML = ''; 
+            
+            if (students.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Chưa có dữ liệu</td></tr>';
+                return;
+            }
+
+            students.forEach(student => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${student.id}</td>
+                    <td>${student.name}</td>
+                    <td>${student.email}</td>
+                    <td>${student.gpa}</td>
+                    <td>
+                        <button class="btn-edit" onclick="editStudent('${student.id}')">Sửa</button>
+                        <button class="btn-delete" onclick="deleteStudent('${student.id}')">Xóa</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // 2. CREATE & UPDATE: Gửi dữ liệu lên API (POST / PUT)
+        async function saveStudent() {
+            const idInput = document.getElementById('studentId').value;
+            const name = document.getElementById('name').value;
+            const email = document.getElementById('email').value;
+            const gpa = document.getElementById('gpa').value;
+
+            if (!name || !email || !gpa) {
+                alert('Vui lòng điền đầy đủ thông tin!');
+                return;
+            }
+
+            // Gói dữ liệu thành object
+            const studentData = {
+                name: name,
+                email: email,
+                gpa: parseFloat(gpa)
+            };
+
+            try {
+                if (idInput) {
+                    // UPDATE: Dùng phương thức PUT với ID đính kèm ở URL
+                    await fetch(`${API_URL}/${idInput}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(studentData)
+                    });
+                    alert('Cập nhật thành công!');
+                } else {
+                    // CREATE: Dùng phương thức POST để tạo mới
+                    await fetch(API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(studentData)
+                    });
+                    alert('Thêm mới thành công!');
+                }
+                resetForm();
+                fetchStudents(); // Load lại bảng sau khi lưu
+            } catch (error) {
+                console.error('Lỗi khi lưu dữ liệu:', error);
+                alert('Có lỗi xảy ra khi lưu dữ liệu!');
+            }
+        }
+
+        // 3. Chuẩn bị dữ liệu để UPDATE
+        function editStudent(id) {
+            // Tìm học sinh trong mảng tạm `students` thay vì gọi API lại cho nhanh
+            const student = students.find(s => s.id == id);
+            if (student) {
+                document.getElementById('studentId').value = student.id;
+                document.getElementById('name').value = student.name;
+                document.getElementById('email').value = student.email;
+                document.getElementById('gpa').value = student.gpa;
+                
+                document.getElementById('form-title').innerText = "Cập nhật Học Sinh";
+                document.getElementById('save-btn').innerText = "Cập nhật";
+                document.getElementById('save-btn').style.backgroundColor = "#ffc107";
+                document.getElementById('save-btn').style.color = "#212529";
+            }
+        }
+
+        // 4. DELETE: Xóa dữ liệu từ API bằng phương thức DELETE
+        async function deleteStudent(id) {
+            if (confirm('Bạn có chắc chắn muốn xóa học sinh này không?')) {
+                try {
+                    await fetch(`${API_URL}/${id}`, {
+                        method: 'DELETE'
+                    });
+                    fetchStudents(); // Cập nhật lại giao diện
+                } catch (error) {
+                    console.error('Lỗi khi xóa dữ liệu:', error);
+                    alert('Có lỗi xảy ra khi xóa dữ liệu!');
+                }
+            }
+        }
+
+        // Hàm Reset lại Form
+        function resetForm() {
+            document.getElementById('studentId').value = '';
+            document.getElementById('name').value = '';
+            document.getElementById('email').value = '';
+            document.getElementById('gpa').value = '';
+            
+            document.getElementById('form-title').innerText = "Thêm Học Sinh";
+            document.getElementById('save-btn').innerText = "Lưu";
+            document.getElementById('save-btn').style.backgroundColor = "#007bff";
+            document.getElementById('save-btn').style.color = "#fff";
+        }
+
+        // Gọi API lấy dữ liệu ngay khi trang web vừa tải xong
+        fetchStudents();
+    </script>
+</body>
+</html>

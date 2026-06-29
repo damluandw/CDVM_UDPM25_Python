@@ -1,0 +1,28 @@
+2026-06-08 11:04:51,004 - INFO - B\u1eaft \u0111\u1ea7u x\u1eed lý file: data.csv
+2026-06-08 11:04:51,005 - ERROR - L\u1ed7i: [Errno 2] No such file or directory: 'data.csv'
+Traceback (most recent call last):
+  File "d:\00.Code\VietMy\Python\Lesson06\fixloi.py", line 15, in process_csv
+    with open(filepath, "r", encoding="utf-8") as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'data.csv'
+2026-06-08 11:06:50,727 - INFO - B\u1eaft \u0111\u1ea7u x\u1eed lý file: data.csv
+2026-06-08 11:07:57,488 - ERROR - L\u1ed7i: [Errno 2] No such file or directory: 'data.csv'
+Traceback (most recent call last):
+  File "d:\00.Code\VietMy\Python\Lesson06\fixloi.py", line 15, in process_csv
+    with open(filepath, "r", encoding="utf-8") as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'data.csv'
+2026-06-08 11:08:26,436 - INFO - B\u1eaft \u0111\u1ea7u x\u1eed lý file: data.csv
+2026-06-08 11:09:03,813 - ERROR - L\u1ed7i: [Errno 2] No such file or directory: 'data.csv'
+Traceback (most recent call last):
+  File "d:\00.Code\VietMy\Python\Lesson06\fixloi.py", line 15, in process_csv
+    with open(filepath, "r", encoding="utf-8") as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'data.csv'
+2026-06-08 13:29:19,821 - INFO - B\u1eaft \u0111\u1ea7u x\u1eed lý file: data.csv
+2026-06-08 13:29:19,929 - ERROR - L\u1ed7i: [Errno 2] No such file or directory: 'data.csv'
+Traceback (most recent call last):
+  File "d:\00.Code\VietMy\Python\Lesson06\fixloi.py", line 15, in process_csv
+    with open(filepath, "r", encoding="utf-8") as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'data.csv'

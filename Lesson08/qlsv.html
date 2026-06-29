@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ thống Quản lý Sinh viên - RESTful API Client</title>
+    <!-- Tailwind CSS để xây dựng giao diện nhanh, hiện đại -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome cho các biểu tượng trực quan -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts cho kiểu chữ tinh tế -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        /* Hiệu ứng chuyển động mượt mà */
+        .transition-all-300 {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen pb-12">
+
+    <!-- THANH ĐIỀU HƯỚNG / HEADER -->
+    <nav class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-40 px-6 py-4">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="p-2.5 bg-indigo-600 rounded-xl text-white shadow-lg shadow-indigo-500/30">
+                    <i class="fa-solid fa-graduation-cap text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight text-white">StudentHub API Client</h1>
+                    <p class="text-xs text-slate-400">Template thực hành CRUD dành cho Sinh viên CNTT</p>
+                </div>
+            </div>
+            
+            <!-- Cấu hình API Endpoint ngay trên giao diện -->
+            <div class="flex flex-wrap items-center gap-3 bg-slate-800 p-2 rounded-xl border border-slate-700/50 w-full md:w-auto">
+                <div class="flex items-center gap-2 px-2">
+                    <span id="api-status-dot" class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span id="api-status-text" class="text-xs font-semibold text-slate-300">Kết nối ổn định</span>
+                </div>
+                <input type="text" id="api-url-input" 
+                       value="http://127.0.0.1:8000/students" 
+                       class="bg-slate-950 text-slate-200 text-xs px-3 py-1.5 rounded-lg border border-slate-700 focus:outline-none focus:border-indigo-500 w-full sm:w-64"
+                       placeholder="Nhập đường dẫn API thực tế...">
+                <button onclick="testConnection()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-3 py-1.5 rounded-lg font-medium transition-all-300">
+                    <i class="fa-solid fa-rotate"></i> Thử lại
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- NỘI DUNG CHÍNH -->
+    <main class="max-w-7xl mx-auto px-6 mt-8">
+        
+        <!-- THÔNG BÁO VỀ LỖI CORS CỰC KỲ HỮU ÍCH CHO SINH VIÊN -->
+        <div class="mb-8 bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex gap-4 items-start">
+            <div class="p-2 bg-amber-500/20 text-amber-400 rounded-lg shrink-0">
+                <i class="fa-solid fa-triangle-exclamation text-lg"></i>
+            </div>
+            <div>
+                <h4 class="font-semibold text-amber-300 text-sm">Gợi ý dành cho lập trình viên (CORS Error):</h4>
+                <p class="text-xs text-slate-300 mt-1 leading-relaxed">
+                    Nếu gặp lỗi khi gọi API thực tế từ localhost, hãy đảm bảo bạn đã cấu hình <strong class="text-white">CORSMiddleware</strong> trong FastAPI của mình. 
+                    <span class="block mt-2 font-mono text-slate-400 bg-slate-950/50 p-2 rounded border border-slate-800">
+                        from fastapi.middleware.cors import CORSMiddleware<br>
+                        app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+                    </span>
+                </p>
+            </div>
+        </div>
+
+        <!-- BẢNG ĐIỀU KHIỂN CHẾ ĐỘ CHẠY & THỐNG KÊ -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <!-- Chọn chế độ hoạt động -->
+            <div class="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-5 flex flex-col justify-between">
+                <div>
+                    <h3 class="font-bold text-slate-200">Chế độ hoạt động</h3>
+                    <p class="text-xs text-slate-400 mt-1">Dễ dàng thử nghiệm giao diện ngay cả khi chưa bật Backend.</p>
+                </div>
+                <div class="flex gap-2 mt-4">
+                    <button id="btn-mode-mock" onclick="switchMode('mock')" class="flex-1 py-2 px-3 text-xs font-bold rounded-xl border border-indigo-500 bg-indigo-600/20 text-indigo-300 transition-all-300">
+                        <i class="fa-solid fa-laptop-code mr-1"></i> Mô phỏng (Mock)
+                    </button>
+                    <button id="btn-mode-real" onclick="switchMode('real')" class="flex-1 py-2 px-3 text-xs font-bold rounded-xl border border-slate-700 bg-slate-800 text-slate-400 transition-all-300">
+                        <i class="fa-solid fa-server mr-1"></i> API Thực tế
+                    </button>
+                </div>
+            </div>
+
+            <!-- Thống kê 1: Tổng sinh viên -->
+            <div class="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-5 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Tổng số sinh viên</p>
+                    <h2 id="stat-total" class="text-4xl font-bold text-white mt-1">0</h2>
+                    <p class="text-xs text-emerald-400 mt-1"><i class="fa-solid fa-circle-check"></i> Cập nhật trực tiếp</p>
+                </div>
+                <div class="p-4 bg-emerald-500/10 text-emerald-400 rounded-2xl">
+                    <i class="fa-solid fa-users text-2xl"></i>
+                </div>
+            </div>
+
+            <!-- Thống kê 2: Điểm GPA Trung bình -->
+            <div class="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-5 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Điểm GPA Trung bình</p>
+                    <h2 id="stat-gpa" class="text-4xl font-bold text-indigo-400 mt-1">0.0</h2>
+                    <p id="stat-gpa-eval" class="text-xs text-indigo-300 mt-1">Chưa có dữ liệu</p>
+                </div>
+                <div class="p-4 bg-indigo-500/10 text-indigo-400 rounded-2xl">
+                    <i class="fa-solid fa-chart-line text-2xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- BẢNG DỮ LIỆU & BỘ LỌC -->
+        <div class="bg-slate-800/30 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+            <!-- Header của bảng có thanh tìm kiếm và nút thêm mới -->
+            <div class="p-6 border-b border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-800/20">
+                <div class="relative w-full sm:w-96">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                    </span>
+                    <input type="text" id="search-input" oninput="handleSearch()"
+                           class="w-full bg-slate-900 border border-slate-700 pl-10 pr-4 py-2.5 rounded-xl text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                           placeholder="Tìm kiếm theo tên hoặc email sinh viên...">
+                </div>
+
+                <button onclick="openStudentModal()" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-semibold text-sm px-5 py-2.5 rounded-xl shadow-lg shadow-indigo-500/20 transition-all-300 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-plus"></i> Thêm Sinh Viên Mới
+                </button>
+            </div>
+
+            <!-- Danh sách dạng Table -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-800/40 text-slate-400 text-xs font-bold uppercase tracking-wider">
+                            <th class="py-4 px-6">Mã ID</th>
+                            <th class="py-4 px-6">Họ và Tên</th>
+                            <th class="py-4 px-6">Email Đăng ký</th>
+                            <th class="py-4 px-6 text-center">GPA</th>
+                            <th class="py-4 px-6 text-right">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="student-table-body" class="divide-y divide-slate-800 text-sm">
+                        <!-- Dữ liệu sẽ được render động thông qua Javascript -->
+                        <tr>
+                            <td colspan="5" class="py-12 text-center text-slate-500">
+                                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500 mx-auto mb-4"></div>
+                                Đang tải danh sách sinh viên...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Footer của bảng: Trạng thái và số lượng -->
+            <div class="p-4 bg-slate-800/10 border-t border-slate-800 text-xs text-slate-400 flex justify-between items-center">
+                <span id="showing-entries-text">Hiển thị 0 sinh viên</span>
+                <span class="italic text-slate-500">FastAPI CRUD Template v1.0</span>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- MODAL THÊM / CẬP NHẬT SINH VIÊN -->
+    <div id="student-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl transform scale-95 transition-transform duration-300">
+            <!-- Modal Header -->
+            <div class="px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-slate-800/30">
+                <h3 id="modal-title" class="font-bold text-lg text-white">Thêm Sinh Viên</h3>
+                <button onclick="closeStudentModal()" class="text-slate-400 hover:text-white transition-colors p-1.5 hover:bg-slate-800 rounded-lg">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Modal Form -->
+            <form id="student-form" onsubmit="handleSubmit(event)" class="p-6 space-y-4">
+                <!-- ID Ẩn để phục vụ chức năng Edit (Cập nhật) -->
+                <input type="hidden" id="student-id">
+
+                <div>
+                    <label for="input-name" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Họ và Tên <span class="text-rose-500">*</span></label>
+                    <input type="text" id="input-name" required
+                           class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                           placeholder="Ví dụ: Nguyễn Văn A">
+                </div>
+
+                <div>
+                    <label for="input-email" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Địa chỉ Email <span class="text-rose-500">*</span></label>
+                    <input type="email" id="input-email" required
+                           class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                           placeholder="Ví dụ: nva@student.edu.vn">
+                </div>
+
+                <div>
+                    <label for="input-gpa" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Điểm học tập GPA (Thang điểm 4) <span class="text-rose-500">*</span></label>
+                    <input type="number" id="input-gpa" step="0.1" min="0" max="4" required
+                           class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                           placeholder="Ví dụ: 3.6">
+                </div>
+
+                <!-- Modal Actions -->
+                <div class="flex gap-3 justify-end pt-4 border-t border-slate-800 mt-6">
+                    <button type="button" onclick="closeStudentModal()"
+                            class="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-sm rounded-xl transition-all-300">
+                        Hủy bỏ
+                    </button>
+                    <button type="submit" id="btn-submit-form"
+                            class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm rounded-xl transition-all-300 shadow-lg shadow-indigo-500/15">
+                        Xác nhận lưu
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- KHU VỰC THÔNG BÁO TOAST (CUSTOM CHUYÊN NGHIỆP) -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-3"></div>
+
+
+    <!-- JAVASCRIPT ĐIỀU KHIỂN LOGIC (GIẢI THÍCH CHI TIẾT TỪNG DÒNG) -->
+    <script>
+        // -------------------------------------------------------------
+        // 1. KHỞI TẠO CẤU HÌNH VÀ DỮ LIỆU MOCK (DÀNH CHO CHẾ ĐỘ MÔ PHỎNG)
+        // -------------------------------------------------------------
+        let currentMode = 'mock'; // Có 2 chế độ: 'mock' (mô phỏng) hoặc 'real' (gọi API thật)
+        
+        // Mảng dữ liệu mô phỏng ban đầu trong trường hợp chưa kết nối backend
+        let mockStudents = [
+            { id: 1, name: "Nguyễn Hoàng Nam", email: "nam.nh21@student.edu.vn", gpa: 3.6 },
+            { id: 2, name: "Trần Thị Khánh Huyền", email: "huyen.ttk20@student.edu.vn", gpa: 3.9 },
+            { id: 3, name: "Lê Minh Triết", email: "triet.lm22@student.edu.vn", gpa: 2.8 },
+            { id: 4, name: "Phạm Thảo Linh", email: "linh.pt21@student.edu.vn", gpa: 3.4 }
+        ];
+
+        // Lấy các phần tử DOM cần dùng nhiều lần
+        const studentTableBody = document.getElementById('student-table-body');
+        const searchInput = document.getElementById('search-input');
+        const apiUrlInput = document.getElementById('api-url-input');
+        const studentModal = document.getElementById('student-modal');
+        const studentForm = document.getElementById('student-form');
+        const modalTitle = document.getElementById('modal-title');
+
+        // Hàm lấy Base URL API từ input người dùng điền
+        function getApiUrl() {
+            return apiUrlInput.value.trim();
+        }
+
+        // -------------------------------------------------------------
+        // 2. CHUYỂN ĐỔI CHẾ ĐỘ CHẠY (MOCK VS REAL API)
+        // -------------------------------------------------------------
+        function switchMode(mode) {
+            currentMode = mode;
+            const btnMock = document.getElementById('btn-mode-mock');
+            const btnReal = document.getElementById('btn-mode-real');
+            const statusDot = document.getElementById('api-status-dot');
+            const statusText = document.getElementById('api-status-text');
+
+            if (mode === 'mock') {
+                btnMock.className = "flex-1 py-2 px-3 text-xs font-bold rounded-xl border border-indigo-500 bg-indigo-600/20 text-indigo-300 transition-all-300";
+                btnReal.className = "flex-1 py-2 px-3 text-xs font-bold rounded-xl border border-slate-700 bg-slate-800 text-slate-400 transition-all-300";
+                
+                statusDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse";
+                statusText.innerText = "Chế độ mô phỏng";
+                statusText.className = "text-xs font-semibold text-emerald-400";
+                showToast("Đã chuyển sang chế độ Mô phỏng dữ liệu local!", "info");
+                loadStudents();
+            } else {
+                btnMock.className = "flex-1 py-2 px-3 text-xs font-bold rounded-xl border border-slate-700 bg-slate-800 text-slate-400 transition-all-300";
+                btnReal.className = "flex-1 py-2 px-3 text-xs font-bold rounded-xl border border-indigo-500 bg-indigo-600/20 text-indigo-300 transition-all-300";
+                
+                showToast("Đang kiểm tra kết nối với API thực tế...", "info");
+                testConnection();
+            }
+        }
+
+        // Kiểm tra xem backend thực tế (như FastAPI) có đang hoạt động hay không
+        async function testConnection() {
+            const statusDot = document.getElementById('api-status-dot');
+            const statusText = document.getElementById('api-status-text');
+            
+            statusDot.className = "w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse";
+            statusText.innerText = "Đang kết nối...";
+            statusText.className = "text-xs font-semibold text-amber-400";
+
+            try {
+                // Thử gửi một lệnh GET đơn giản để kiểm tra kết nối
+                const response = await fetch(getApiUrl(), { method: 'GET' });
+                if (response.ok) {
+                    statusDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500";
+                    statusText.innerText = "API Hoạt động";
+                    statusText.className = "text-xs font-semibold text-emerald-400";
+                    showToast("Kết nối API Backend thành công!", "success");
+                    if (currentMode === 'real') loadStudents();
+                } else {
+                    throw new Error("Không thể truy cập tài nguyên");
+                }
+            } catch (error) {
+                statusDot.className = "w-2.5 h-2.5 rounded-full bg-rose-500";
+                statusText.innerText = "Mất kết nối API";
+                statusText.className = "text-xs font-semibold text-rose-400";
+                showToast("Không thể kết nối đến Backend! Vui lòng kiểm tra lại URL hoặc CORS.", "error");
+                
+                // Nếu kết nối thật lỗi, tự động hạ cấp về chế độ mock để sinh viên tương tác được
+                if (currentMode === 'real') {
+                    setTimeout(() => {
+                        switchMode('mock');
+                    }, 1000);
+                }
+            }
+        }
+
+        // -------------------------------------------------------------
+        // 3. CÁC HÀM GET DỮ LIỆU (READ)
+        // -------------------------------------------------------------
+        async function loadStudents() {
+            let students = [];
+            
+            // Render trạng thái loading
+            studentTableBody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="py-12 text-center text-slate-500">
+                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500 mx-auto mb-4"></div>
+                        Đang làm mới danh sách...
+                    </td>
+                </tr>`;
+
+            if (currentMode === 'mock') {
+                // Ở chế độ mô phỏng, lấy dữ liệu trực tiếp từ RAM
+                students = [...mockStudents];
+                renderTable(students);
+            } else {
+                // Ở chế độ thật, gửi HTTP GET Request đến FastAPI
+                try {
+                    const response = await fetch(getApiUrl());
+                    if (!response.ok) throw new Error("Yêu cầu dữ liệu thất bại");
+                    students = await response.json();
+                    renderTable(students);
+                } catch (error) {
+                    console.error("Lỗi GET API:", error);
+                    showToast("Không thể tải danh sách sinh viên từ API Backend!", "error");
+                    studentTableBody.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="py-12 text-center text-rose-400 font-semibold">
+                                <i class="fa-solid fa-triangle-exclamation text-2xl mb-2 block"></i>
+                                Lỗi kết nối API Backend. Vui lòng bật Server hoặc chuyển về Chế độ Mô phỏng.
+                            </td>
+                        </tr>`;
+                }
+            }
+        }
+
+        // Render dữ liệu mảng sinh viên ra màn hình
+        function renderTable(students) {
+            // Lọc sinh viên theo từ khóa tìm kiếm (nếu có)
+            const keyword = searchInput.value.toLowerCase().trim();
+            const filtered = students.filter(s => 
+                s.name.toLowerCase().includes(keyword) || 
+                s.email.toLowerCase().includes(keyword)
+            );
+
+            if (filtered.length === 0) {
+                studentTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="py-12 text-center text-slate-500">
+                            <i class="fa-solid fa-box-open text-3xl mb-2 block"></i>
+                            Không tìm thấy dữ liệu phù hợp.
+                        </td>
+                    </tr>`;
+                updateStatistics(filtered);
+                return;
+            }
+
+            studentTableBody.innerHTML = filtered.map(student => `
+                <tr class="hover:bg-slate-800/20 transition-colors border-b border-slate-800/60">
+                    <td class="py-4 px-6 font-mono font-medium text-slate-400">#${student.id}</td>
+                    <td class="py-4 px-6 font-semibold text-slate-100">${student.name}</td>
+                    <td class="py-4 px-6 text-slate-300">${student.email}</td>
+                    <td class="py-4 px-6 text-center">
+                        <span class="inline-block px-2.5 py-1 rounded-lg text-xs font-bold ${getGpaBadgeClass(student.gpa)}">
+                            ${parseFloat(student.gpa).toFixed(2)}
+                        </span>
+                    </td>
+                    <td class="py-4 px-6 text-right">
+                        <div class="flex justify-end gap-2">
+                            <button onclick="editStudent(${student.id}, '${student.name}', '${student.email}', ${student.gpa})" 
+                                    class="p-2 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 rounded-lg transition-colors"
+                                    title="Sửa đổi">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </button>
+                            <button onclick="deleteStudent(${student.id})" 
+                                    class="p-2 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-lg transition-colors"
+                                    title="Xóa bỏ">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+
+            updateStatistics(filtered);
+        }
+
+        // Định màu điểm GPA trực quan
+        function getGpaBadgeClass(gpa) {
+            if (gpa >= 3.6) return "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+            if (gpa >= 3.2) return "bg-teal-500/10 text-teal-400 border border-teal-500/20";
+            if (gpa >= 2.5) return "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20";
+            return "bg-rose-500/10 text-rose-400 border border-rose-500/20";
+        }
+
+        // Tính toán thống kê dữ liệu trực tiếp trên giao diện
+        function updateStatistics(students) {
+            document.getElementById('stat-total').innerText = students.length;
+            document.getElementById('showing-entries-text').innerText = `Hiển thị ${students.length} sinh viên`;
+
+            if (students.length === 0) {
+                document.getElementById('stat-gpa').innerText = "0.0";
+                document.getElementById('stat-gpa-eval').innerText = "Chưa có dữ liệu";
+                return;
+            }
+
+            const sumGpa = students.reduce((sum, s) => sum + parseFloat(s.gpa), 0);
+            const avgGpa = sumGpa / students.length;
+            document.getElementById('stat-gpa').innerText = avgGpa.toFixed(2);
+
+            let evaluation = "Khá";
+            let evalColor = "text-indigo-300";
+            if (avgGpa >= 3.6) {
+                evaluation = "Xuất sắc/Giỏi 🌟";
+                evalColor = "text-emerald-400";
+            } else if (avgGpa >= 3.2) {
+                evaluation = "Khá Giỏi 👍";
+                evalColor = "text-teal-400";
+            } else if (avgGpa < 2.5) {
+                evaluation = "Cần cố gắng 📚";
+                evalColor = "text-rose-400";
+            }
+            const evalElement = document.getElementById('stat-gpa-eval');
+            evalElement.innerText = `Đánh giá học lực: ${evaluation}`;
+            evalElement.className = `text-xs mt-1 ${evalColor}`;
+        }
+
+        // Tìm kiếm thời gian thực (Debouncing đơn giản)
+        function handleSearch() {
+            loadStudents();
+        }
+
+        // -------------------------------------------------------------
+        // 4. THÊM VÀ SỬA ĐỔI DỮ LIỆU (POST & PUT)
+        // -------------------------------------------------------------
+        async function handleSubmit(event) {
+            event.preventDefault(); // Tránh reload lại trang khi gửi form
+            
+            const id = document.getElementById('student-id').value;
+            const name = document.getElementById('input-name').value.trim();
+            const email = document.getElementById('input-email').value.trim();
+            const gpa = parseFloat(document.getElementById('input-gpa').value);
+
+            // Payload dữ liệu gửi đi (Đúng định dạng mô hình Pydantic mong muốn)
+            const payload = { name, email, gpa };
+
+            if (currentMode === 'mock') {
+                if (id) {
+                    // Cập nhật (PUT) trong Mock Array
+                    const index = mockStudents.findIndex(s => s.id === parseInt(id));
+                    if (index !== -1) {
+                        mockStudents[index] = { ...mockStudents[index], ...payload };
+                        showToast(`Cập nhật thành công sinh viên #${id}!`, "success");
+                    }
+                } else {
+                    // Thêm mới (POST) trong Mock Array
+                    const newId = mockStudents.length > 0 ? Math.max(...mockStudents.map(s => s.id)) + 1 : 1;
+                    mockStudents.push({ id: newId, ...payload });
+                    showToast("Thêm mới sinh viên thành công!", "success");
+                }
+                closeStudentModal();
+                loadStudents();
+            } else {
+                // Gửi HTTP Request thực tế đến Backend
+                try {
+                    let response;
+                    if (id) {
+                        // PUT API: Cập nhật thông tin sinh viên có sẵn
+                        response = await fetch(`${getApiUrl()}/${id}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                    } else {
+                        // POST API: Tạo sinh viên mới hoàn toàn
+                        response = await fetch(getApiUrl(), {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                    }
+
+                    if (response.ok) {
+                        showToast(id ? "Cập nhật dữ liệu qua API thành công!" : "Tạo dữ liệu qua API thành công!", "success");
+                        closeStudentModal();
+                        loadStudents();
+                    } else {
+                        const errData = await response.json();
+                        throw new Error(errData.detail || "Yêu cầu xử lý thất bại");
+                    }
+                } catch (error) {
+                    console.error("Lỗi ghi dữ liệu API:", error);
+                    showToast(`Thất bại: ${error.message}`, "error");
+                }
+            }
+        }
+
+        // -------------------------------------------------------------
+        // 5. XÓA BỎ DỮ LIỆU (DELETE)
+        // -------------------------------------------------------------
+        async function deleteStudent(id) {
+            // Sử dụng modal xác nhận thuần HTML thay thế cho alert để thẩm mỹ cao nhất
+            const confirmed = confirm(`Bạn có chắc chắn muốn xóa sinh viên #${id} này khỏi hệ thống?`);
+            if (!confirmed) return;
+
+            if (currentMode === 'mock') {
+                mockStudents = mockStudents.filter(s => s.id !== id);
+                showToast(`Đã xóa sinh viên #${id} thành công!`, "success");
+                loadStudents();
+            } else {
+                try {
+                    // Gửi HTTP DELETE Request đến Backend
+                    const response = await fetch(`${getApiUrl()}/${id}`, {
+                        method: 'DELETE'
+                    });
+
+                    if (response.ok) {
+                        showToast(`Xóa sinh viên #${id} thành công!`, "success");
+                        loadStudents();
+                    } else {
+                        throw new Error("Không thể xóa bản ghi trên API Server");
+                    }
+                } catch (error) {
+                    console.error("Lỗi DELETE API:", error);
+                    showToast(`Không thể thực hiện xóa: ${error.message}`, "error");
+                }
+            }
+        }
+
+        // -------------------------------------------------------------
+        // 6. CÁC HÀM TIỆN ÍCH GIAO DIỆN (UI UTILS)
+        // -------------------------------------------------------------
+        
+        // Mở Modal (dùng cho cả Add và Edit)
+        function openStudentModal() {
+            // Reset form trước khi mở
+            studentForm.reset();
+            document.getElementById('student-id').value = '';
+            modalTitle.innerText = "Thêm Sinh Viên Mới";
+            
+            studentModal.classList.remove('hidden');
+            setTimeout(() => {
+                studentModal.classList.remove('opacity-0');
+                studentModal.querySelector('div').classList.remove('scale-95');
+            }, 10);
+        }
+
+        // Điền dữ liệu vào form để phục vụ sửa đổi (Edit)
+        function editStudent(id, name, email, gpa) {
+            openStudentModal();
+            modalTitle.innerText = `Cập nhật Sinh viên #${id}`;
+            document.getElementById('student-id').value = id;
+            document.getElementById('input-name').value = name;
+            document.getElementById('input-email').value = email;
+            document.getElementById('input-gpa').value = gpa;
+        }
+
+        // Đóng Modal mượt mà
+        function closeStudentModal() {
+            studentModal.classList.add('opacity-0');
+            studentModal.querySelector('div').classList.add('scale-95');
+            setTimeout(() => {
+                studentModal.classList.add('hidden');
+            }, 300);
+        }
+
+        // Tạo thông báo Toast động không gây phiền toái cho người dùng
+        function showToast(message, type = 'success') {
+            const toastContainer = document.getElementById('toast-container');
+            
+            // Định nghĩa màu sắc biểu tượng dựa trên trạng thái
+            let icon = 'fa-circle-check';
+            let colorClasses = 'bg-slate-800 border-emerald-500/30 text-emerald-400';
+            
+            if (type === 'error') {
+                icon = 'fa-circle-xmark';
+                colorClasses = 'bg-slate-800 border-rose-500/30 text-rose-400';
+            } else if (type === 'info') {
+                icon = 'fa-circle-info';
+                colorClasses = 'bg-slate-800 border-indigo-500/30 text-indigo-400';
+            }
+
+            const toast = document.createElement('div');
+            toast.className = `flex items-center gap-3 px-4 py-3 rounded-xl border shadow-2xl transition-all duration-300 transform translate-y-5 opacity-0 ${colorClasses}`;
+            toast.innerHTML = `
+                <i class="fa-solid ${icon} text-lg"></i>
+                <span class="text-xs font-semibold text-slate-100">${message}</span>
+            `;
+
+            toastContainer.appendChild(toast);
+            
+            // Trượt toast vào màn hình
+            setTimeout(() => {
+                toast.classList.remove('translate-y-5', 'opacity-0');
+            }, 10);
+
+            // Tự động xóa toast sau 3.5 giây
+            setTimeout(() => {
+                toast.classList.add('translate-y-5', 'opacity-0');
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            }, 3500);
+        }
+
+        // Khởi động chạy lần đầu khi DOM được load hoàn tất
+        window.addEventListener('DOMContentLoaded', () => {
+            loadStudents();
+        });
+    </script>
+</body>
+</html>
